@@ -1,34 +1,35 @@
 """Pyvona : an IVONA python library
 Author: Zachary Bears
+Contact Email: bears.zachary@gmail.com
 Note: Full operation of this library requires the requests and pygame libraries
 """
-import sys,os,base64, datetime, hashlib, hmac, requests
+# TODO switch to urllib instead of requests
+# TODO make code beautiful
+import sys,os,base64, datetime, hashlib, hmac, json
 pygame_available = False
 try:
 	import pygame
 	pygame_available = True
 except ImportError:
-	pygame_available = False
+	pass
 try:
 	import requests
 except ImportError:
-	print "The requests library is essential for pyvona operation. Please install the library and try again."
-	exit()
+	raise PyvonaException('The requests library is essential for Pyvona operation. Without it, Pyvona will not function correctly.')
 
 def createVoice(access_key, secret_key):
 	"""Creates and returns a voice object to interact with
 	"""
 	return Voice(access_key, secret_key)
 
-class Voice:
+class Voice(object):
 	"""An object that contains all the required methods for interacting with the IVONA text-to-speech system
 	"""
-	region = ''
-	host = ''
-	voice_name = ''
-	speech_rate = 'medium'
-	sentence_break = '400'
-	paragraph_break = '650'
+
+	voice_name = None
+	speech_rate = None
+	sentence_break = None
+	paragraph_break = None
 	region_options = {
 		'us-east' : 'us-east-1',
 		'us-west' : 'us-west-2',
@@ -36,46 +37,24 @@ class Voice:
 	}
 	access_key = ''
 	secret_key = ''
-	if access_key is None or secret_key is None:
-		print 'No IVONA credentials configured. Please add credentials to OS environment vars.'
-		print "access key id should be referenced by IVONA_ACCESS_KEY_ID"
-		print "secret access key should be referenced by IVONA_SECRET_ACCESS_KEY"
-		sys.exit()
 
-	def setRegion(self, regionName):
-		"""Change the amazon server region that is interfaced with
-		Options are: us-east, us-west, eu-west
-		"""
-		global region, host, endpoint
-		self.region = self.region_options.get(regionName,'us-east-1')
-		self.host = 'tts.'+self.region+'.ivonacloud.com'
+	_region = None
+	_host = None
 
-	def setVoiceName(self, name):
-		"""Change the desired speaker's name
-		"""
-		self.voice_name = name
-
-	def setSpeechRate(self, rate):
-		"""Change the speech rate. Default is 'medium'
-		"""
-		self.speech_rate = rate
-
-	def setSentenceBreak(self, sent_break):
-		"""Change the sentence break timing. Default is '400'
-		"""
-		self.sentence_break = sent_break
-
-	def setParagraphBreak(self,para_break):
-		"""Change the paragraph break timing. Default is '650'
-		"""
-		seft.paragraph_break = para_break
+	@property
+	def region(self):
+		return self._region
+	@region.setter
+	def region(self,region_name):
+		self._region = self.region_options.get(region_name,'us-east-1')
+		self._host = 'tts.{}.ivonacloud.com'.format(self._region)
 
 	def fetchVoiceOGG(self,textToSpeak, filename):
 		""" Fetch an ogg file for given text and save it to the given file name
 		"""
 		if not filename.endswith(".ogg"):
 			filename+=".ogg"
-		r = self._sendAmazon4StepAuthPacket('POST', 'tts', 'application/json', '/CreateSpeech', '', self._generatePayload(textToSpeak), self.region, self.host)
+		r = self._sendAmazon4StepAuthPacket('POST', 'tts', 'application/json', '/CreateSpeech', '', self._generatePayload(textToSpeak), self._region, self._host)
 		file = open(filename, 'wb')
 		file.write(r.content)
 		file.close()
@@ -83,33 +62,43 @@ class Voice:
 	def speak(self,textToSpeak):
 		""" Speak a given text
 		"""
-		if pygame_available:
-			temp_fname = 'temp504032039423433493.ogg'
-			self.fetchVoiceOGG(textToSpeak,temp_fname)
-			channel = pygame.mixer.Channel(5)
-			sound = pygame.mixer.Sound(temp_fname)
-			channel.play(sound)
-			while channel.get_busy():
-				tmp=True
-				#Do nothing
-			os.remove(os.getcwd()+'/'+temp_fname)
-		else:
-			print "Please install the pygame library to use this feature."
-			exit()
+		if not pygame_available:
+			raise PyvonaException("Pygame not installed. Please install to use speech.")
+		temp_fname = 'temp504032039423433493.ogg'
+		self.fetchVoiceOGG(textToSpeak,temp_fname)
+		channel = pygame.mixer.Channel(5)
+		sound = pygame.mixer.Sound(temp_fname)
+		channel.play(sound)
+		while channel.get_busy():
+			pass
+		os.remove(os.getcwd()+'/'+temp_fname)
+		
 
 	def listVoices(self):
-		""" Prints all the possible voices 
+		""" Returns all the possible voices 
 		"""
 		r = self._sendAmazon4StepAuthPacket('POST','tts','application/json','/ListVoices','','',self.region,self.host)
-		print r.content
 		return r.content
 
 	def _generatePayload(self,textToSpeak):
-		payload = '{"Input":{"Data":"'+textToSpeak+'"}, "OutputFormat":{"Codec":"OGG"},'
-		#payload += '"Parameters" : { "Rate" : "'+self.speech_rate+'", "SentenceBreak" : '+self.sentence_break+', "ParagraphBreak" : '+self.paragraph_break+'}'
-		payload += '"Voice" : {"Name":"'+self.voice_name+'"}'
-		payload += '}'
-		return payload
+		payload = {
+			'Input': {
+				'Data': textToSpeak
+			},
+			'OutputFormat': {
+				'Codec': 'OGG'
+			},
+			'Parameters' : {
+				'Rate' : self.speech_rate,
+				'SentenceBreak' : self.sentence_break,
+				'ParagraphBreak' : self.paragraph_break
+			},
+			'Voice' : {
+				'Name' : self.voice_name
+			}
+
+		}
+		return json.dumps(payload)
 
 	def _sendAmazon4StepAuthPacket(self,method,service,content_type,canonical_uri,canonical_querystring,request_parameters,region,host):
 		"""Send a packet to a given amazon server using Amazon's signature Version 4,
@@ -159,9 +148,15 @@ class Voice:
 	def __init__(self, access_key,secret_key):
 		"""Set initial voice object parameters
 		"""
-		self.setRegion('us-east')
-		self.setVoiceName('Brian')
+		self.region = 'us-east'
+		self.voice_name = 'Brian'
 		self.access_key = access_key
 		self.secret_key = secret_key
+		self.speech_rate = 'medium'
+		self.sentence_break = 400
+		self.paragraph_break = 650
 		if pygame_available:
 			pygame.mixer.init()
+
+class PyvonaException(Exception):
+	pass
