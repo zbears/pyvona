@@ -7,7 +7,6 @@ Contact Email: bears.zachary@gmail.com
 Note: Full operation of this library requires the requests and pygame libraries
 """
 
-# TODO switch to urllib instead of requests
 import base64
 import datetime
 import hashlib
@@ -28,7 +27,7 @@ else:
 try:
     import requests
 except ImportError:
-    msg = 'The requests library is essential for Pyvonaoperation. '
+    msg = 'The requests library is essential for Pyvona operation. '
     msg += 'Without it, Pyvona will not function correctly.'
     raise PyvonaException(msg)
 
@@ -56,8 +55,8 @@ class Voice(object):
         'us-west': 'us-west-2',
         'eu-west': 'eu-west-1',
     }
-    access_key = ''
-    secret_key = ''
+    access_key = None
+    secret_key = None
 
     algorithm = 'AWS4-HMAC-SHA256'
     signed_headers = 'content-type;host;x-amz-content-sha256;x-amz-date'
@@ -79,8 +78,12 @@ class Voice(object):
         filename += ".ogg" if not filename.endswith(".ogg") else ""
         r = self._send_amazon_auth_packet_v4('POST', 'tts', 'application/json', '/CreateSpeech', '',
                                              self._generate_payload(text_to_speak), self._region, self._host)
-        with open(filename, 'wb') as f:
-            f.write(r.content)
+        if r.content.startswith('{'):
+            raise PyvonaException('Error fetching voice: {}'.format(r.content))
+        else:
+            with open(filename, 'wb') as f:
+                f.write(r.content)
+
 
     def speak(self, text_to_speak):
         """Speak a given text
