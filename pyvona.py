@@ -59,8 +59,8 @@ class Voice(object):
     access_key = ''
     secret_key = ''
 
-    _algorithm = 'AWS4-HMAC-SHA256'
-    _signed_headers = 'content-type;host;x-amz-content-sha256;x-amz-date'
+    algorithm = 'AWS4-HMAC-SHA256'
+    signed_headers = 'content-type;host;x-amz-content-sha256;x-amz-date'
     _region = None
     _host = None
 
@@ -88,7 +88,7 @@ class Voice(object):
         if not pygame_available:
             raise PyvonaException("Pygame not installed. Please install to use speech.")
 
-        temp_fname = '{}.ogg' % str(uuid.uuid4())
+        temp_fname = '{}.ogg'.format(str(uuid.uuid4()))
         self.fetch_voice_ogg(text_to_speak, temp_fname)
         channel = pygame.mixer.Channel(5)
         sound = pygame.mixer.Sound(temp_fname)
@@ -122,7 +122,7 @@ class Voice(object):
             }
         })
 
-    def _send_amazon_auth_packet_v4(self, method, service, content_type, canonical_uri, 
+    def _send_amazon_auth_packet_v4(self, method, service, content_type, canonical_uri,
                                     canonical_querystring, request_parameters, region, host):
         """Send a packet to a given amazon server using Amazon's signature Version 4,
         Returns the resulting response object
@@ -135,17 +135,17 @@ class Voice(object):
         # Step 1: Create canonical request
         payload_hash = self._sha_hash(request_parameters)
 
-        canonical_headers = 'content-type:{}\n' % content_type
-        canonical_headers += 'host:{}\n' % host
-        canonical_headers += 'x-amz-content-sha256:{}\n' % payload_hash
-        canonical_headers += 'x-amz-date:{}\n' % amazon_date
+        canonical_headers = 'content-type:{}\n'.format(content_type)
+        canonical_headers += 'host:{}\n'.format(host)
+        canonical_headers += 'x-amz-content-sha256:{}\n'.format(payload_hash)
+        canonical_headers += 'x-amz-date:{}\n'.format(amazon_date)
 
         canonical_request = '\n'.join([method, canonical_uri, canonical_querystring,
-                                       canonical_headers, signed_headers, payload_hash])
+                                       canonical_headers, self.signed_headers, payload_hash])
 
         # Step 2: Create the string to sign
-        credential_scope = '{}/{}/{}/aws4_request' % (date_stamp, region, service)
-        string_to_sign = '\n'.join([algorithm, amazon_date, credential_scope,
+        credential_scope = '{}/{}/{}/aws4_request'.format(date_stamp, region, service)
+        string_to_sign = '\n'.join([self.algorithm, amazon_date, credential_scope,
                                     self._sha_hash(canonical_request)])
 
         # Step 3: Calculate the signature
@@ -153,9 +153,10 @@ class Voice(object):
         signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
 
         # Step 4: Create the signed packet
-        endpoint = 'https://{}{}' % (host, canonical_uri)
+        endpoint = 'https://{}{}'.format(host, canonical_uri)
         authorization_header = '{} Credential={}/{}, SignedHeaders={}, Signature={}'
-        authorization_header %= (algorithm, self.access_key, credential_scope, signed_headers, signature)
+        authorization_header = authorization_header.format(self.algorithm, self.access_key, credential_scope,
+                                                           self.signed_headers, signature)
         headers = {
             'Host': host,
             'Content-type': content_type,
@@ -174,7 +175,7 @@ class Voice(object):
         return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
 
     def _get_signature_key(self, key, date_stamp, region_name, service_name):
-        k_date = self._sign(('AWS4{}' % key).encode('utf-8'), date_stamp)
+        k_date = self._sign(('AWS4{}'.format(key)).encode('utf-8'), date_stamp)
         k_region = self._sign(k_date, region_name)
         k_service = self._sign(k_region, service_name)
         k_signing = self._sign(k_service, 'aws4_request')
