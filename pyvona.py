@@ -77,14 +77,14 @@ class Voice(object):
         """Fetch an ogg file for given text and save it to the given file name
         """
         filename += ".ogg" if not filename.endswith(".ogg") else ""
-        r = self._send_amazon_auth_packet_v4('POST', 'tts', 'application/json', '/CreateSpeech', '',
-                                             self._generate_payload(text_to_speak), self._region, self._host)
+        r = self._send_amazon_auth_packet_v4(
+            'POST', 'tts', 'application/json', '/CreateSpeech', '',
+            self._generate_payload(text_to_speak), self._region, self._host)
         if r.content.startswith('{'):
             raise PyvonaException('Error fetching voice: {}'.format(r.content))
         else:
             with open(filename, 'wb') as f:
                 f.write(r.content)
-
 
     def speak(self, text_to_speak):
         """Speak a given text
@@ -104,8 +104,9 @@ class Voice(object):
     def list_voices(self):
         """Returns all the possible voices
         """
-        r = self._send_amazon_auth_packet_v4('POST', 'tts', 'application/json', '/ListVoices',
-                                             '', '', self._region, self._host)
+        r = self._send_amazon_auth_packet_v4(
+            'POST', 'tts', 'application/json', '/ListVoices', '', '',
+            self._region, self._host)
         return r.content
 
     def _generate_payload(self, text_to_speak):
@@ -126,8 +127,9 @@ class Voice(object):
             }
         })
 
-    def _send_amazon_auth_packet_v4(self, method, service, content_type, canonical_uri,
-                                    canonical_querystring, request_parameters, region, host):
+    def _send_amazon_auth_packet_v4(self, method, service, content_type,
+                                    canonical_uri, canonical_querystring,
+                                    request_parameters, region, host):
         """Send a packet to a given amazon server using Amazon's signature Version 4,
         Returns the resulting response object
         """
@@ -144,13 +146,15 @@ class Voice(object):
         canonical_headers += 'x-amz-content-sha256:{}\n'.format(payload_hash)
         canonical_headers += 'x-amz-date:{}\n'.format(amazon_date)
 
-        canonical_request = '\n'.join([method, canonical_uri, canonical_querystring,
-                                       canonical_headers, self.signed_headers, payload_hash])
+        canonical_request = '\n'.join([
+            method, canonical_uri, canonical_querystring, canonical_headers,
+            self.signed_headers, payload_hash])
 
         # Step 2: Create the string to sign
         credential_scope = '{}/{}/{}/aws4_request'.format(date_stamp, region, service)
-        string_to_sign = '\n'.join([self.algorithm, amazon_date, credential_scope,
-                                    self._sha_hash(canonical_request)])
+        string_to_sign = '\n'.join([
+            self.algorithm, amazon_date, credential_scope,
+            self._sha_hash(canonical_request)])
 
         # Step 3: Calculate the signature
         signing_key = self._get_signature_key(self.secret_key, date_stamp, region, service)
@@ -159,8 +163,9 @@ class Voice(object):
         # Step 4: Create the signed packet
         endpoint = 'https://{}{}'.format(host, canonical_uri)
         authorization_header = '{} Credential={}/{}, SignedHeaders={}, Signature={}'
-        authorization_header = authorization_header.format(self.algorithm, self.access_key, credential_scope,
-                                                           self.signed_headers, signature)
+        authorization_header = authorization_header.format(
+            self.algorithm, self.access_key, credential_scope,
+            self.signed_headers, signature)
         headers = {
             'Host': host,
             'Content-type': content_type,
