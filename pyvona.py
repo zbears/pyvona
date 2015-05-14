@@ -104,7 +104,7 @@ class Voice(object):
         """Returns all the possible voices
         """
         r = self._send_amazon_auth_packet_v4('POST', 'tts', 'application/json', '/ListVoices',
-                                             '', '', self.region, self.host)
+                                             '', '', self._region, self._host)
         return r.content
 
     def _generate_payload(self, text_to_speak):
