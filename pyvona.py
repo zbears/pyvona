@@ -15,6 +15,9 @@ import os
 import uuid
 
 
+class PyvonaException(Exception):
+    pass
+
 try:
     import pygame
 except ImportError:
@@ -194,7 +197,3 @@ class Voice(object):
         self.paragraph_break = 650
         if pygame_available:
             pygame.mixer.init()
-
-
-class PyvonaException(Exception):
-    pass
