@@ -7,13 +7,11 @@ Contact Email: bears.zachary@gmail.com
 Note: Full operation of this library requires the requests and pygame libraries
 """
 
-import base64
 import datetime
 import hashlib
 import hmac
 import json
 import os
-import sys
 import uuid
 
 
