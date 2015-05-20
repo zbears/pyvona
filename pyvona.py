@@ -51,6 +51,7 @@ class Voice(object):
     speech_rate = None
     sentence_break = None
     paragraph_break = None
+    _codec = "ogg"
     region_options = {
         'us-east': 'us-east-1',
         'us-west': 'us-west-2',
@@ -73,10 +74,29 @@ class Voice(object):
         self._region = self.region_options.get(region_name, 'us-east-1')
         self._host = 'tts.{}.ivonacloud.com'.format(self._region)
 
+    @property
+    def codec(self):
+        return self._codec
+
+    @codec.setter
+    def codec(self, codec):
+        if codec not in ["mp3", "ogg"]:
+            raise PyvonaException("Invalid codec specified. Please choose 'mp3' or 'ogg'")
+        self._codec = codec
+
     def fetch_voice_ogg(self, text_to_speak, filename):
         """Fetch an ogg file for given text and save it to the given file name
         """
-        filename += ".ogg" if not filename.endswith(".ogg") else ""
+        current_codec = self.codec
+        self.codec = "ogg"
+        self.fetch_voice(text_to_speak, filename)
+        self.codec = current_codec
+
+    def fetch_voice(self, text_to_speak, filename):
+        """Fetch a voice file for given text and save it to the given file name
+        """
+        file_extension = ".{codec}".format(codec=self.codec)
+        filename += file_extension if not filename.endswith(file_extension) else ""
         r = self._send_amazon_auth_packet_v4(
             'POST', 'tts', 'application/json', '/CreateSpeech', '',
             self._generate_payload(text_to_speak), self._region, self._host)
@@ -115,7 +135,7 @@ class Voice(object):
                 'Data': text_to_speak
             },
             'OutputFormat': {
-                'Codec': 'OGG'
+                'Codec': self.codec.upper()
             },
             'Parameters': {
                 'Rate': self.speech_rate,
