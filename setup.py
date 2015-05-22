@@ -8,7 +8,7 @@ from distutils.core import setup
 print "Welcome to Pyvona setup. Installing Pyvona..."
 
 setup(name='pyvona',
-      version='0.21',
+      version='0.22',
       description='Python text-to-speech IVONA Wrapper',
       author='Zachary Bears',
       author_email='bears.zachary@gmail.com',
