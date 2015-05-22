@@ -7,15 +7,16 @@ Contact Email: bears.zachary@gmail.com
 Note: Full operation of this library requires the requests and pygame libraries
 """
 
-import base64
 import datetime
 import hashlib
 import hmac
 import json
 import os
-import sys
 import uuid
 
+
+class PyvonaException(Exception):
+    pass
 
 try:
     import pygame
@@ -50,6 +51,7 @@ class Voice(object):
     speech_rate = None
     sentence_break = None
     paragraph_break = None
+    _codec = "ogg"
     region_options = {
         'us-east': 'us-east-1',
         'us-west': 'us-west-2',
@@ -72,18 +74,37 @@ class Voice(object):
         self._region = self.region_options.get(region_name, 'us-east-1')
         self._host = 'tts.{}.ivonacloud.com'.format(self._region)
 
+    @property
+    def codec(self):
+        return self._codec
+
+    @codec.setter
+    def codec(self, codec):
+        if codec not in ["mp3", "ogg"]:
+            raise PyvonaException("Invalid codec specified. Please choose 'mp3' or 'ogg'")
+        self._codec = codec
+
     def fetch_voice_ogg(self, text_to_speak, filename):
         """Fetch an ogg file for given text and save it to the given file name
         """
-        filename += ".ogg" if not filename.endswith(".ogg") else ""
-        r = self._send_amazon_auth_packet_v4('POST', 'tts', 'application/json', '/CreateSpeech', '',
-                                             self._generate_payload(text_to_speak), self._region, self._host)
+        current_codec = self.codec
+        self.codec = "ogg"
+        self.fetch_voice(text_to_speak, filename)
+        self.codec = current_codec
+
+    def fetch_voice(self, text_to_speak, filename):
+        """Fetch a voice file for given text and save it to the given file name
+        """
+        file_extension = ".{codec}".format(codec=self.codec)
+        filename += file_extension if not filename.endswith(file_extension) else ""
+        r = self._send_amazon_auth_packet_v4(
+            'POST', 'tts', 'application/json', '/CreateSpeech', '',
+            self._generate_payload(text_to_speak), self._region, self._host)
         if r.content.startswith('{'):
             raise PyvonaException('Error fetching voice: {}'.format(r.content))
         else:
             with open(filename, 'wb') as f:
                 f.write(r.content)
-
 
     def speak(self, text_to_speak):
         """Speak a given text
@@ -103,8 +124,9 @@ class Voice(object):
     def list_voices(self):
         """Returns all the possible voices
         """
-        r = self._send_amazon_auth_packet_v4('POST', 'tts', 'application/json', '/ListVoices',
-                                             '', '', self._region, self._host)
+        r = self._send_amazon_auth_packet_v4(
+            'POST', 'tts', 'application/json', '/ListVoices', '', '',
+            self._region, self._host)
         return r.content
 
     def _generate_payload(self, text_to_speak):
@@ -113,7 +135,7 @@ class Voice(object):
                 'Data': text_to_speak
             },
             'OutputFormat': {
-                'Codec': 'OGG'
+                'Codec': self.codec.upper()
             },
             'Parameters': {
                 'Rate': self.speech_rate,
@@ -125,8 +147,9 @@ class Voice(object):
             }
         })
 
-    def _send_amazon_auth_packet_v4(self, method, service, content_type, canonical_uri,
-                                    canonical_querystring, request_parameters, region, host):
+    def _send_amazon_auth_packet_v4(self, method, service, content_type,
+                                    canonical_uri, canonical_querystring,
+                                    request_parameters, region, host):
         """Send a packet to a given amazon server using Amazon's signature Version 4,
         Returns the resulting response object
         """
@@ -143,13 +166,15 @@ class Voice(object):
         canonical_headers += 'x-amz-content-sha256:{}\n'.format(payload_hash)
         canonical_headers += 'x-amz-date:{}\n'.format(amazon_date)
 
-        canonical_request = '\n'.join([method, canonical_uri, canonical_querystring,
-                                       canonical_headers, self.signed_headers, payload_hash])
+        canonical_request = '\n'.join([
+            method, canonical_uri, canonical_querystring, canonical_headers,
+            self.signed_headers, payload_hash])
 
         # Step 2: Create the string to sign
         credential_scope = '{}/{}/{}/aws4_request'.format(date_stamp, region, service)
-        string_to_sign = '\n'.join([self.algorithm, amazon_date, credential_scope,
-                                    self._sha_hash(canonical_request)])
+        string_to_sign = '\n'.join([
+            self.algorithm, amazon_date, credential_scope,
+            self._sha_hash(canonical_request)])
 
         # Step 3: Calculate the signature
         signing_key = self._get_signature_key(self.secret_key, date_stamp, region, service)
@@ -158,8 +183,9 @@ class Voice(object):
         # Step 4: Create the signed packet
         endpoint = 'https://{}{}'.format(host, canonical_uri)
         authorization_header = '{} Credential={}/{}, SignedHeaders={}, Signature={}'
-        authorization_header = authorization_header.format(self.algorithm, self.access_key, credential_scope,
-                                                           self.signed_headers, signature)
+        authorization_header = authorization_header.format(
+            self.algorithm, self.access_key, credential_scope,
+            self.signed_headers, signature)
         headers = {
             'Host': host,
             'Content-type': content_type,
@@ -196,7 +222,3 @@ class Voice(object):
         self.paragraph_break = 650
         if pygame_available:
             pygame.mixer.init()
-
-
-class PyvonaException(Exception):
-    pass
