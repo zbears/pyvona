@@ -44,6 +44,7 @@ def create_voice(access_key, secret_key):
 
 
 class Voice(object):
+
     """An object that contains all the required methods for interacting
     with the IVONA text-to-speech system
     """
@@ -81,7 +82,8 @@ class Voice(object):
     @codec.setter
     def codec(self, codec):
         if codec not in ["mp3", "ogg"]:
-            raise PyvonaException("Invalid codec specified. Please choose 'mp3' or 'ogg'")
+            raise PyvonaException(
+                "Invalid codec specified. Please choose 'mp3' or 'ogg'")
         self._codec = codec
 
     def fetch_voice_ogg(self, text_to_speak, filename):
@@ -96,7 +98,8 @@ class Voice(object):
         """Fetch a voice file for given text and save it to the given file name
         """
         file_extension = ".{codec}".format(codec=self.codec)
-        filename += file_extension if not filename.endswith(file_extension) else ""
+        filename += file_extension if not filename.endswith(
+            file_extension) else ""
         r = self._send_amazon_auth_packet_v4(
             'POST', 'tts', 'application/json', '/CreateSpeech', '',
             self._generate_payload(text_to_speak), self._region, self._host)
@@ -110,7 +113,8 @@ class Voice(object):
         """Speak a given text
         """
         if not pygame_available:
-            raise PyvonaException("Pygame not installed. Please install to use speech.")
+            raise PyvonaException(
+                "Pygame not installed. Please install to use speech.")
 
         temp_fname = '{}.ogg'.format(str(uuid.uuid4()))
         self.fetch_voice_ogg(text_to_speak, temp_fname)
@@ -119,7 +123,7 @@ class Voice(object):
         channel.play(sound)
         while channel.get_busy():
             pass
-        os.remove(os.getcwd()+'/'+temp_fname)
+        os.remove(os.getcwd() + '/' + temp_fname)
 
     def list_voices(self):
         """Returns all the possible voices
@@ -171,18 +175,23 @@ class Voice(object):
             self.signed_headers, payload_hash])
 
         # Step 2: Create the string to sign
-        credential_scope = '{}/{}/{}/aws4_request'.format(date_stamp, region, service)
+        credential_scope = '{}/{}/{}/aws4_request'.format(
+            date_stamp, region, service)
         string_to_sign = '\n'.join([
             self.algorithm, amazon_date, credential_scope,
             self._sha_hash(canonical_request)])
 
         # Step 3: Calculate the signature
-        signing_key = self._get_signature_key(self.secret_key, date_stamp, region, service)
-        signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+        signing_key = self._get_signature_key(
+            self.secret_key, date_stamp, region, service)
+        signature = hmac.new(
+            signing_key, string_to_sign.encode('utf-8'),
+            hashlib.sha256).hexdigest()
 
         # Step 4: Create the signed packet
         endpoint = 'https://{}{}'.format(host, canonical_uri)
-        authorization_header = '{} Credential={}/{}, SignedHeaders={}, Signature={}'
+        authorization_header = '{} Credential={}/{}, ' +\
+            'SignedHeaders={}, Signature={}'
         authorization_header = authorization_header.format(
             self.algorithm, self.access_key, credential_scope,
             self.signed_headers, signature)
@@ -195,7 +204,8 @@ class Voice(object):
             'Content-Length': len(request_parameters)
         }
         # Send the packet and return the response
-        return requests.post(endpoint, data=request_parameters, headers=headers)
+        return requests.post(endpoint, data=request_parameters,
+                             headers=headers)
 
     def _sha_hash(self, to_hash):
         return hashlib.sha256(to_hash).hexdigest()
