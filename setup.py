@@ -4,9 +4,6 @@
 import os
 from distutils.core import setup
 
-
-print "Welcome to Pyvona setup. Installing Pyvona..."
-
 setup(name='pyvona',
       version='0.22',
       description='Python text-to-speech IVONA Wrapper',
@@ -17,4 +14,3 @@ setup(name='pyvona',
       install_requires=['requests']
     )
 
-print "Please visit zacharybears.com/pyvona for tutorials, feature requests, and questions."
