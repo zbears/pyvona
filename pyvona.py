@@ -103,7 +103,7 @@ class Voice(object):
         r = self._send_amazon_auth_packet_v4(
             'POST', 'tts', 'application/json', '/CreateSpeech', '',
             self._generate_payload(text_to_speak), self._region, self._host)
-        if r.content.startswith('{'):
+        if r.content.startswith(b'{'):
             raise PyvonaException('Error fetching voice: {}'.format(r.content))
         else:
             with open(filename, 'wb') as f:
@@ -208,7 +208,7 @@ class Voice(object):
                              headers=headers)
 
     def _sha_hash(self, to_hash):
-        return hashlib.sha256(to_hash).hexdigest()
+        return hashlib.sha256(to_hash.encode('utf-8')).hexdigest()
 
     def _sign(self, key, msg):
         return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
