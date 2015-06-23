@@ -5,7 +5,7 @@ import os
 from distutils.core import setup
 
 setup(name='pyvona',
-      version='0.23',
+      version='0.24',
       description='Python text-to-speech IVONA Wrapper',
       author='Zachary Bears',
       author_email='bears.zachary@gmail.com',
