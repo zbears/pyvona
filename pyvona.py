@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import tempfile
+import contextlib
 
 
 class PyvonaException(Exception):
@@ -85,13 +86,20 @@ class Voice(object):
                 "Invalid codec specified. Please choose 'mp3' or 'ogg'")
         self._codec = codec
 
+    @contextlib.contextmanager
+    def use_ogg_codec(self):
+        current_codec = self.codec
+        self.codec = "ogg"
+        try:
+            yield
+        finally:
+            self.codec = current_codec
+
     def fetch_voice_ogg(self, text_to_speak, filename):
         """Fetch an ogg file for given text and save it to the given file name
         """
-        current_codec = self.codec
-        self.codec = "ogg"
-        self.fetch_voice(text_to_speak, filename)
-        self.codec = current_codec
+        with self.use_ogg_codec():
+            self.fetch_voice(text_to_speak, filename)
 
     def fetch_voice(self, text_to_speak, filename):
         """Fetch a voice file for given text and save it to the given file name
@@ -121,10 +129,8 @@ class Voice(object):
                 "Pygame not installed. Please install to use speech.")
 
         with tempfile.SpooledTemporaryFile() as f:
-            current_codec = self.codec
-            self.codec = "ogg"
-            self.fetch_voice_fp(text_to_speak, f)
-            self.codec = current_codec
+            with self.use_ogg_codec():
+                self.fetch_voice_fp(text_to_speak, f)
             f.seek(0)
             channel = pygame.mixer.Channel(5)
             sound = pygame.mixer.Sound(f)
