@@ -11,8 +11,7 @@ import datetime
 import hashlib
 import hmac
 import json
-import os
-import uuid
+import tempfile
 
 
 class PyvonaException(Exception):
@@ -121,14 +120,17 @@ class Voice(object):
             raise PyvonaException(
                 "Pygame not installed. Please install to use speech.")
 
-        temp_fname = '{}.ogg'.format(str(uuid.uuid4()))
-        self.fetch_voice_ogg(text_to_speak, temp_fname)
-        channel = pygame.mixer.Channel(5)
-        sound = pygame.mixer.Sound(temp_fname)
-        channel.play(sound)
-        while channel.get_busy():
-            pass
-        os.remove(os.getcwd() + '/' + temp_fname)
+        with tempfile.SpooledTemporaryFile() as f:
+            current_codec = self.codec
+            self.codec = "ogg"
+            self.fetch_voice_fp(text_to_speak, f)
+            self.codec = current_codec
+            f.seek(0)
+            channel = pygame.mixer.Channel(5)
+            sound = pygame.mixer.Sound(f)
+            channel.play(sound)
+            while channel.get_busy():
+                pass
 
     def list_voices(self):
         """Returns all the possible voices
