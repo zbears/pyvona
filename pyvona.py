@@ -11,8 +11,8 @@ import datetime
 import hashlib
 import hmac
 import json
-import os
-import uuid
+import tempfile
+import contextlib
 
 
 class PyvonaException(Exception):
@@ -86,13 +86,20 @@ class Voice(object):
                 "Invalid codec specified. Please choose 'mp3' or 'ogg'")
         self._codec = codec
 
+    @contextlib.contextmanager
+    def use_ogg_codec(self):
+        current_codec = self.codec
+        self.codec = "ogg"
+        try:
+            yield
+        finally:
+            self.codec = current_codec
+
     def fetch_voice_ogg(self, text_to_speak, filename):
         """Fetch an ogg file for given text and save it to the given file name
         """
-        current_codec = self.codec
-        self.codec = "ogg"
-        self.fetch_voice(text_to_speak, filename)
-        self.codec = current_codec
+        with self.use_ogg_codec():
+            self.fetch_voice(text_to_speak, filename)
 
     def fetch_voice(self, text_to_speak, filename):
         """Fetch a voice file for given text and save it to the given file name
@@ -100,14 +107,19 @@ class Voice(object):
         file_extension = ".{codec}".format(codec=self.codec)
         filename += file_extension if not filename.endswith(
             file_extension) else ""
+        with open(filename, 'wb') as f:
+            self.fetch_voice_fp(text_to_speak, f)
+
+    def fetch_voice_fp(self, text_to_speak, fp):
+        """Fetch a voice file for given text and save it to the given file pointer
+        """
         r = self._send_amazon_auth_packet_v4(
             'POST', 'tts', 'application/json', '/CreateSpeech', '',
             self._generate_payload(text_to_speak), self._region, self._host)
         if r.content.startswith(b'{'):
             raise PyvonaException('Error fetching voice: {}'.format(r.content))
         else:
-            with open(filename, 'wb') as f:
-                f.write(r.content)
+            fp.write(r.content)
 
     def speak(self, text_to_speak):
         """Speak a given text
@@ -116,14 +128,15 @@ class Voice(object):
             raise PyvonaException(
                 "Pygame not installed. Please install to use speech.")
 
-        temp_fname = '{}.ogg'.format(str(uuid.uuid4()))
-        self.fetch_voice_ogg(text_to_speak, temp_fname)
-        channel = pygame.mixer.Channel(5)
-        sound = pygame.mixer.Sound(temp_fname)
-        channel.play(sound)
-        while channel.get_busy():
-            pass
-        os.remove(os.getcwd() + '/' + temp_fname)
+        with tempfile.SpooledTemporaryFile() as f:
+            with self.use_ogg_codec():
+                self.fetch_voice_fp(text_to_speak, f)
+            f.seek(0)
+            channel = pygame.mixer.Channel(5)
+            sound = pygame.mixer.Sound(f)
+            channel.play(sound)
+            while channel.get_busy():
+                pass
 
     def list_voices(self):
         """Returns all the possible voices
