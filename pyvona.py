@@ -132,6 +132,8 @@ class Voice(object):
             with self.use_ogg_codec():
                 self.fetch_voice_fp(text_to_speak, f)
             f.seek(0)
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
             channel = pygame.mixer.Channel(5)
             sound = pygame.mixer.Sound(f)
             channel.play(sound)
@@ -243,5 +245,3 @@ class Voice(object):
         self.speech_rate = 'medium'
         self.sentence_break = 400
         self.paragraph_break = 650
-        if pygame_available:
-            pygame.mixer.init()
