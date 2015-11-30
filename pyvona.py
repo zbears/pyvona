@@ -27,6 +27,7 @@ else:
 
 try:
     import requests
+    requests.packages.urllib3.disable_warnings()
 except ImportError:
     msg = 'The requests library is essential for Pyvona operation. '
     msg += 'Without it, Pyvona will not function correctly.'
