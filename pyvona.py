@@ -152,6 +152,7 @@ class Voice(object):
     def _generate_payload(self, text_to_speak):
         return json.dumps({
             'Input': {
+                "Type":"application/ssml+xml",
                 'Data': text_to_speak
             },
             'OutputFormat': {
