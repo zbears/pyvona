@@ -147,11 +147,12 @@ class Voice(object):
         r = self._send_amazon_auth_packet_v4(
             'POST', 'tts', 'application/json', '/ListVoices', '', '',
             self._region, self._host)
-        return json.loads(r.content)
+        return r.json()
 
     def _generate_payload(self, text_to_speak):
         return json.dumps({
             'Input': {
+                "Type":"application/ssml+xml",
                 'Data': text_to_speak
             },
             'OutputFormat': {
