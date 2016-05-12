@@ -50,6 +50,8 @@ class Voice(object):
     with the IVONA text-to-speech system
     """
     voice_name = None
+    language = None
+    gender = None
     speech_rate = None
     sentence_break = None
     paragraph_break = None
@@ -164,7 +166,9 @@ class Voice(object):
                 'ParagraphBreak': self.paragraph_break
             },
             'Voice': {
-                'Name': self.voice_name
+                'Name': self.voice_name,
+                'Language': self.language,
+                'Gender': self.gender
             }
         })
 
