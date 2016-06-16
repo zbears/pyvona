@@ -50,6 +50,8 @@ class Voice(object):
     with the IVONA text-to-speech system
     """
     voice_name = None
+    language = None
+    gender = None
     speech_rate = None
     sentence_break = None
     paragraph_break = None
@@ -147,11 +149,12 @@ class Voice(object):
         r = self._send_amazon_auth_packet_v4(
             'POST', 'tts', 'application/json', '/ListVoices', '', '',
             self._region, self._host)
-        return json.loads(r.content.decode('utf8'))
+        return r.json()
 
     def _generate_payload(self, text_to_speak):
         return json.dumps({
             'Input': {
+                "Type":"application/ssml+xml",
                 'Data': text_to_speak
             },
             'OutputFormat': {
@@ -163,7 +166,9 @@ class Voice(object):
                 'ParagraphBreak': self.paragraph_break
             },
             'Voice': {
-                'Name': self.voice_name
+                'Name': self.voice_name,
+                'Language': self.language,
+                'Gender': self.gender
             }
         })
 
