@@ -160,9 +160,6 @@ class Voice(object):
         while channel.get_busy():
             pass
 
-
-
-
     def list_voices(self):
         """Returns all the possible voices
         """
