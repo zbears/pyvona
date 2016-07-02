@@ -13,6 +13,7 @@ import hmac
 import json
 import tempfile
 import contextlib
+import os
 
 
 class PyvonaException(Exception):
@@ -124,24 +125,43 @@ class Voice(object):
         else:
             fp.write(r.content)
 
-    def speak(self, text_to_speak):
+    def speak(self, text_to_speak, use_cache=False):
         """Speak a given text
         """
         if not pygame_available:
             raise PyvonaException(
                 "Pygame not installed. Please install to use speech.")
 
-        with tempfile.SpooledTemporaryFile() as f:
-            with self.use_ogg_codec():
-                self.fetch_voice_fp(text_to_speak, f)
-            f.seek(0)
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
+        if not pygame.mixer.get_init():
+            pygame.mixer.init()
             channel = pygame.mixer.Channel(5)
+
+        if use_cache is False:
+            with tempfile.SpooledTemporaryFile() as f:
+                with self.use_ogg_codec():
+                    self.fetch_voice_fp(text_to_speak, f)
+                f.seek(0)
+                sound = pygame.mixer.Sound(f)
+        else:
+            cache_f = hashlib.md5(text_to_speak).hexdigest() + '.ogg'
+            speech_cache_dir = os.getcwd() + '/speech_cache/'
+
+            if not os.path.isdir(speech_cache_dir):
+                os.makedirs(speech_cache_dir)
+
+            if not os.path.isfile(speech_cache_dir + cache_f):
+                with self.use_ogg_codec():
+                    self.fetch_voice(text_to_speak, 'speech_cache/' + cache_f)
+
+            f = speech_cache_dir + cache_f
             sound = pygame.mixer.Sound(f)
-            channel.play(sound)
-            while channel.get_busy():
-                pass
+
+        channel.play(sound)
+        while channel.get_busy():
+            pass
+
+
+
 
     def list_voices(self):
         """Returns all the possible voices
