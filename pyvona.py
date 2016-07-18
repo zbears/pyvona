@@ -69,6 +69,7 @@ class Voice(object):
     signed_headers = 'content-type;host;x-amz-content-sha256;x-amz-date'
     _region = None
     _host = None
+    _session = None
 
     @property
     def region(self):
@@ -242,8 +243,10 @@ class Voice(object):
             'Content-Length': len(request_parameters)
         }
         # Send the packet and return the response
-        return requests.post(endpoint, data=request_parameters,
-                             headers=headers)
+        # Use requests.Session() for HTTP keep-alive
+        if self._session is None:
+            self._session = requests.Session()
+        return self._session.post(endpoint, data=request_parameters, headers=headers)
 
     def _sha_hash(self, to_hash):
         return hashlib.sha256(to_hash.encode('utf-8')).hexdigest()
