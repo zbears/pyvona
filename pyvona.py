@@ -136,6 +136,11 @@ class Voice(object):
         if not pygame.mixer.get_init():
             pygame.mixer.init()
             channel = pygame.mixer.Channel(5)
+        else:
+            channel = pygame.mixer.find_channel()
+            if channel is None:
+                pygame.mixer.set_num_channels(pygame.mixer.get_num_channels()+1)
+                channel = pygame.mixer.find_channel()
 
         if use_cache is False:
             with tempfile.SpooledTemporaryFile() as f:
