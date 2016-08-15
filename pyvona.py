@@ -245,7 +245,7 @@ class Voice(object):
             'X-Amz-Date': amazon_date,
             'Authorization': authorization_header,
             'x-amz-content-sha256': payload_hash,
-            'Content-Length': len(request_parameters)
+            'Content-Length': str(len(request_parameters))
         }
         # Send the packet and return the response
         # Use requests.Session() for HTTP keep-alive
